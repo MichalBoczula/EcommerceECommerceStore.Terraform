@@ -1,0 +1,12 @@
+environment  = "dev"
+name_suffix  = "mike2026"
+location     = "northeurope"
+sql_location = "francecentral"
+
+# Use the existing empty group only after importing it (see README).
+# resource_group_name = "rg-ecommerce-dev"
+
+# Optional: your laptop's public IPv4; omit for no database firewall rules.
+# operator_ipv4 = "203.0.113.10"
+
+# Subscription/passwords are supplied through environment variables, not this file.
