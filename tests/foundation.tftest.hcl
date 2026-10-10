@@ -20,6 +20,14 @@ run "free_foundation" {
   command = plan
 
   assert {
+    condition = contains(
+      ["centralus", "eastus2", "westus2", "westeurope", "eastasia"],
+      azurerm_static_web_app.main.location
+    )
+    error_message = "Static Web Apps must use one of its supported regions, independently of the ACA region."
+  }
+
+  assert {
     condition = (
       azapi_resource.products_database.body.properties.useFreeLimit == true &&
       azapi_resource.products_database.body.properties.freeLimitExhaustionBehavior == "AutoPause" &&
