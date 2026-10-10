@@ -2,19 +2,9 @@ provider "azurerm" {
   subscription_id = var.subscription_id
   use_cli         = true
 
-  # Register only the services this root uses, including Microsoft.App.
+  # The operator-run bootstrap registers providers before the CI identity is used.
   resource_provider_registrations = "none"
-  resource_providers_to_register = [
-    "Microsoft.App",
-    "Microsoft.DocumentDB",
-    "Microsoft.KeyVault",
-    "Microsoft.ManagedIdentity",
-    "Microsoft.Network",
-    "Microsoft.Sql",
-    "Microsoft.Storage",
-    "Microsoft.Web",
-  ]
-  storage_use_azuread = true
+  storage_use_azuread             = true
 
   features {
     key_vault {

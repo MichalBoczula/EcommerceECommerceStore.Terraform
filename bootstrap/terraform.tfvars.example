@@ -1,0 +1,6 @@
+environment             = "dev"
+name_suffix             = "mike2026"
+location                = "northeurope"
+github_repository       = "MichalBoczula/EcommerceECommerceStore.Terraform"
+# resource_group_name = "rg-ecommerce-dev"
+# Keep this directory's local state. Ordinary foundation destroy never runs here.

@@ -18,3 +18,9 @@ terraform.rc
 .env
 .env.*
 *.zip
+
+backend.hcl
+plans/
+__pycache__/
+metadata.json
+source-run.json

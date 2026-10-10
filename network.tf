@@ -1,6 +1,6 @@
 resource "azurerm_virtual_network" "main" {
   name                = "vnet-${local.prefix}"
-  resource_group_name = azurerm_resource_group.main.name
+  resource_group_name = data.azurerm_resource_group.main.name
   location            = var.location
   address_space       = ["10.42.0.0/16"]
   tags                = local.tags
@@ -8,7 +8,7 @@ resource "azurerm_virtual_network" "main" {
 
 resource "azurerm_subnet" "aca" {
   name                 = "aca"
-  resource_group_name  = azurerm_resource_group.main.name
+  resource_group_name  = data.azurerm_resource_group.main.name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.42.0.0/27"]
 
@@ -23,7 +23,7 @@ resource "azurerm_subnet" "aca" {
 
 resource "azurerm_container_app_environment" "main" {
   name                               = "cae-${local.prefix}"
-  resource_group_name                = azurerm_resource_group.main.name
+  resource_group_name                = data.azurerm_resource_group.main.name
   location                           = var.location
   infrastructure_subnet_id           = azurerm_subnet.aca.id
   infrastructure_resource_group_name = "rg-${local.prefix}-aca-managed"
