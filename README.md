@@ -17,7 +17,7 @@ This is a fresh implementation. The deprecated Infrastructure repository is not 
 | Key Vault | Standard, RBAC authorization; empty until application configuration |
 | Managed identities | Products, Users, Invoice, Payments, BFF and LiveDocs |
 | Permissions | Business API secret reads; Products writes photos; Invoice writes invoices; LiveDocs reads reports |
-| Frontend hosting | Static Web Apps Free in West Europe; Angular is not deployed yet |
+| Frontend hosting | Static Web Apps Free; East US 2 by default; Angular is not deployed yet |
 
 The signed-in operator receives Blob Data Contributor and Key Vault Secrets Officer so they can upload demo files and populate secrets later. Use the same Azure identity for the first lifecycle checks.
 
@@ -104,7 +104,9 @@ Applying a saved plan executes it immediately; review the plan before the `apply
 
 The SQL resource checks Azure's returned `useFreeLimit` and `freeLimitExhaustionBehavior`. Azure must confirm `true` and `AutoPause`. There is no automatic paid fallback. The output `databases.sql_free_offer_readback` shows those returned settings.
 
-Static Web Apps uses **West Europe**, independently of the foundation's **North Europe** and SQL's **France Central**. Its supported provisioning regions differ from the other services.
+Static Web Apps uses **East US 2** by default, independently of the foundation's **North Europe** and SQL's **France Central**. Set `static_web_app_location` in your local `terraform.tfvars` to choose another supported region. Its supported provisioning regions differ from the other services, and Azure can still reject a supported region for your subscription during apply. Static assets are globally distributed; this setting does not move the BFF or databases.
+
+If Azure returns `RequestDisallowedByAzure` with `locationineligible`, follow [Microsoft's region-access guidance](https://learn.microsoft.com/en-us/azure/azure-resource-manager/troubleshooting/error-region-access-policy). West Europe currently restricts new customers. For a missing frontend, try `static_web_app_location = "eastus2"` in your existing local `terraform.tfvars`, then generate a fresh plan. Keep the chosen setting after a successful deployment: changing it for an existing Static Web App requires replacement. Do not change `location` or `sql_location` to recover from this frontend error.
 
 If an apply fails after creating some resources, keep the same directory, state and passwords. Correct the configuration, generate a **new** saved plan and apply that plan. Terraform refreshes the resources already created and plans the remaining work; do not reuse the pre-failure saved plan. For a failure limited to frontend creation, expect a plan that creates the missing Static Web App with no replacements or destroys.
 

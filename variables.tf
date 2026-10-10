@@ -48,6 +48,17 @@ variable "location" {
   }
 }
 
+variable "static_web_app_location" {
+  description = "Static Web Apps provisioning region, independent of the ACA and database regions. Azure subscription eligibility is checked during apply."
+  type        = string
+  default     = "eastus2"
+
+  validation {
+    condition     = contains(["centralus", "eastus2", "westus2", "westeurope", "eastasia"], var.static_web_app_location)
+    error_message = "Use centralus, eastus2, westus2, westeurope or eastasia for Static Web Apps."
+  }
+}
+
 variable "sql_location" {
   description = "Keep France Central: the subscription's SQL Free offer was admitted there."
   type        = string

@@ -104,8 +104,19 @@ run "portfolio_names_fit_azure_limits" {
   command = plan
 
   variables {
-    environment = "portfolio"
-    name_suffix = "mike2026"
+    environment             = "portfolio"
+    name_suffix             = "mike2026"
+    static_web_app_location = "westus2"
+  }
+
+  assert {
+    condition = (
+      azurerm_static_web_app.main.location == "westus2" &&
+      azurerm_container_app_environment.main.location == var.location &&
+      azurerm_mongo_cluster.main.location == var.location &&
+      azurerm_mssql_server.main.location == var.sql_location
+    )
+    error_message = "Overriding the frontend region must not relocate the ACA environment or databases."
   }
 
   assert {

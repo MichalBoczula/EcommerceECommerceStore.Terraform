@@ -1,7 +1,8 @@
-environment  = "dev"
-name_suffix  = "mike2026"
-location     = "northeurope"
-sql_location = "francecentral"
+environment             = "dev"
+name_suffix             = "mike2026"
+location                = "northeurope"
+sql_location            = "francecentral"
+static_web_app_location = "eastus2"
 
 # Use the existing empty group only after importing it (see README).
 # resource_group_name = "rg-ecommerce-dev"
