@@ -104,6 +104,8 @@ Applying a saved plan executes it immediately; review the plan before the `apply
 
 The SQL resource checks Azure's returned `useFreeLimit` and `freeLimitExhaustionBehavior`. Azure must confirm `true` and `AutoPause`. There is no automatic paid fallback. The output `databases.sql_free_offer_readback` shows those returned settings.
 
+The SQL ARM body uses `sku.name = "GP_S_Gen5"` with `capacity = 2`, matching Azure's observed readback. A capacity-suffixed name such as `GP_S_Gen5_2` is normalized by Azure and can cause a repeated update on every plan. If this is the only remaining diff, update the configuration and run a fresh plan; another apply is not needed when the plan reports no changes.
+
 Static Web Apps uses **East US 2** by default, independently of the foundation's **North Europe** and SQL's **France Central**. Set `static_web_app_location` in your local `terraform.tfvars` to choose another supported region. Its supported provisioning regions differ from the other services, and Azure can still reject a supported region for your subscription during apply. Static assets are globally distributed; this setting does not move the BFF or databases.
 
 If Azure returns `RequestDisallowedByAzure` with `locationineligible`, follow [Microsoft's region-access guidance](https://learn.microsoft.com/en-us/azure/azure-resource-manager/troubleshooting/error-region-access-policy). West Europe currently restricts new customers. For a missing frontend, try `static_web_app_location = "eastus2"` in your existing local `terraform.tfvars`, then generate a fresh plan. Keep the chosen setting after a successful deployment: changing it for an existing Static Web App requires replacement. Do not change `location` or `sql_location` to recover from this frontend error.
