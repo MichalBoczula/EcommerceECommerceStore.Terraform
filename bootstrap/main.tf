@@ -85,12 +85,11 @@ resource "azurerm_user_assigned_identity" "ci" {
 }
 
 resource "azurerm_federated_identity_credential" "github" {
-  name                = "github-development"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.ci.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.github_repository}:environment:development"
+  name                      = "github-development"
+  user_assigned_identity_id = azurerm_user_assigned_identity.ci.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = "https://token.actions.githubusercontent.com"
+  subject                   = "repo:${var.github_repository}:environment:development"
 }
 
 resource "azurerm_role_assignment" "ci_infrastructure" {

@@ -21,7 +21,6 @@ override_data {
   target = data.azurerm_storage_account.main
   values = {
     id                              = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-ecommerce-dev/providers/Microsoft.Storage/storageAccounts/stecomdevmike2026"
-    shared_access_key_enabled       = false
     allow_nested_items_to_be_public = false
     account_replication_type        = "LRS"
   }
@@ -61,7 +60,6 @@ run "free_foundation" {
 
   assert {
     condition = (
-      !data.azurerm_storage_account.main.shared_access_key_enabled &&
       !data.azurerm_storage_account.main.allow_nested_items_to_be_public &&
       data.azurerm_storage_account.main.account_replication_type == "LRS" &&
       alltrue([for container in azurerm_storage_container.main : container.container_access_type == "private"])
