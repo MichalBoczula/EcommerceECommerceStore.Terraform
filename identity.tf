@@ -1,6 +1,6 @@
 resource "azurerm_key_vault" "main" {
   name                          = "kv-ec-${var.environment}-${var.name_suffix}"
-  resource_group_name           = azurerm_resource_group.main.name
+  resource_group_name           = data.azurerm_resource_group.main.name
   location                      = var.location
   tenant_id                     = data.azurerm_client_config.current.tenant_id
   sku_name                      = "standard"
@@ -16,7 +16,7 @@ resource "azurerm_key_vault" "main" {
 resource "azurerm_user_assigned_identity" "app" {
   for_each            = toset(["products", "users", "invoice", "payments", "bff", "livedocs"])
   name                = "id-${local.prefix}-${each.key}"
-  resource_group_name = azurerm_resource_group.main.name
+  resource_group_name = data.azurerm_resource_group.main.name
   location            = var.location
   tags                = local.tags
 }
@@ -42,11 +42,5 @@ resource "azurerm_role_assignment" "app_files" {
 resource "azurerm_role_assignment" "operator_secrets" {
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets Officer"
-  principal_id         = data.azurerm_client_config.current.object_id
-}
-
-resource "azurerm_role_assignment" "operator_files" {
-  scope                = azurerm_storage_account.main.id
-  role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = data.azurerm_client_config.current.object_id
+  principal_id         = var.operator_object_id
 }

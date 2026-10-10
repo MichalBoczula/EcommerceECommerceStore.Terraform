@@ -1,5 +1,5 @@
 output "resource_group_name" {
-  value = azurerm_resource_group.main.name
+  value = data.azurerm_resource_group.main.name
 }
 
 output "container_apps" {
@@ -29,8 +29,8 @@ output "databases" {
 
 output "storage" {
   value = {
-    account_name  = azurerm_storage_account.main.name
-    blob_endpoint = azurerm_storage_account.main.primary_blob_endpoint
+    account_name  = data.azurerm_storage_account.main.name
+    blob_endpoint = data.azurerm_storage_account.main.primary_blob_endpoint
     containers    = { for name, container in azurerm_storage_container.main : name => container.id }
   }
 }

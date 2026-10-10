@@ -1,6 +1,6 @@
 resource "azurerm_mssql_server" "main" {
   name                          = "sql-${local.prefix}-${var.name_suffix}"
-  resource_group_name           = azurerm_resource_group.main.name
+  resource_group_name           = data.azurerm_resource_group.main.name
   location                      = var.sql_location
   version                       = "12.0"
   administrator_login           = "ecomoperator"
@@ -56,7 +56,7 @@ resource "azapi_resource" "products_database" {
 
 resource "azurerm_mongo_cluster" "main" {
   name                   = "mongo-${local.prefix}-${var.name_suffix}"
-  resource_group_name    = azurerm_resource_group.main.name
+  resource_group_name    = data.azurerm_resource_group.main.name
   location               = var.location
   administrator_username = "ecomoperator"
   administrator_password = var.mongo_admin_password

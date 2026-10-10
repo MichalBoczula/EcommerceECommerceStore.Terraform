@@ -1,0 +1,127 @@
+name: Infrastructure lifecycle
+run-name: Infrastructure ${{ inputs.action }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Infrastructure action
+        type: choice
+        required: true
+        options: [plan, apply, destroy]
+        default: plan
+      plan_run_id:
+        description: Successful plan run ID (required only for apply; valid for 24 hours)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: terraform-development
+  cancel-in-progress: false
+
+jobs:
+  infrastructure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: development
+    defaults:
+      run:
+        shell: bash
+    env:
+      TF_IN_AUTOMATION: 'true'
+      ARM_USE_OIDC: 'true'
+      ARM_USE_AZUREAD: 'true'
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      TF_VAR_sql_admin_password: ${{ secrets.SQL_ADMIN_PASSWORD }}
+      TF_VAR_mongo_admin_password: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+      STATE_ACCOUNT: ${{ vars.STATE_ACCOUNT }}
+      STATE_KEY: development.terraform.tfstate
+      OPERATOR_OBJECT_ID: ${{ vars.OPERATOR_OBJECT_ID }}
+      NAME_SUFFIX: ${{ vars.NAME_SUFFIX }}
+      LOCATION: ${{ vars.LOCATION }}
+      SQL_LOCATION: ${{ vars.SQL_LOCATION }}
+      STATIC_WEB_APP_LOCATION: ${{ vars.STATIC_WEB_APP_LOCATION }}
+      RESOURCE_GROUP_NAME: ${{ vars.RESOURCE_GROUP_NAME }}
+      OPERATOR_IPV4: ${{ vars.OPERATOR_IPV4 }}
+      PLAN_RUN_ID: ${{ inputs.plan_run_id }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+      - name: Prepare development configuration
+        run: |
+          set -euo pipefail
+          for setting in ARM_SUBSCRIPTION_ID ARM_TENANT_ID ARM_CLIENT_ID STATE_ACCOUNT OPERATOR_OBJECT_ID TF_VAR_sql_admin_password TF_VAR_mongo_admin_password; do
+            [[ -n "${!setting}" ]] || { echo "Missing environment setting: $setting"; exit 1; }
+          done
+          python scripts/ci-plan.py configure
+      - name: Authenticate with Azure through GitHub OIDC
+        uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Initialize remote state and validate
+        run: |
+          set -euo pipefail
+          terraform init -input=false -lockfile=readonly \
+            -backend-config="storage_account_name=$STATE_ACCOUNT" \
+            -backend-config=container_name=tfstate \
+            -backend-config="key=$STATE_KEY"
+          terraform validate
+      - name: Generate and privately store a saved plan
+        if: inputs.action == 'plan'
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -lock-timeout=5m -out=deploy.tfplan
+          python scripts/ci-plan.py record
+          for file in deploy.tfplan metadata.json; do
+            az storage blob upload --auth-mode login --account-name "$STATE_ACCOUNT" \
+              --container-name tfplans --name "$GITHUB_RUN_ID/$file" --file "$file" \
+              --overwrite false --only-show-errors --output none
+          done
+          printf 'Saved plan run ID: `%s`\n\nReview the redacted plan above, then manually run **apply** with this run ID within 24 hours. Plans are stored in private Azure Blob Storage.\n' "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify the selected source run and saved plan
+        if: inputs.action == 'apply'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$PLAN_RUN_ID" =~ ^[0-9]+$ ]] || { echo 'Supply the numeric successful plan run ID'; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PLAN_RUN_ID" > source-run.json
+          jq -e --arg sha "$GITHUB_SHA" '
+            .event == "workflow_dispatch" and .head_branch == "main" and
+            .head_sha == $sha and .status == "completed" and .conclusion == "success" and
+            .path == ".github/workflows/infrastructure.yml"
+          ' source-run.json >/dev/null || { echo 'Source plan run is not a successful main run of this workflow at this commit'; exit 1; }
+          for file in deploy.tfplan metadata.json; do
+            az storage blob download --auth-mode login --account-name "$STATE_ACCOUNT" \
+              --container-name tfplans --name "$PLAN_RUN_ID/$file" --file "$file" \
+              --only-show-errors --output none
+          done
+          python scripts/ci-plan.py verify
+      - name: Apply the exact selected plan
+        if: inputs.action == 'apply'
+        run: |
+          terraform apply -input=false -lock-timeout=5m deploy.tfplan
+          printf 'Applied the exact saved plan from run `%s`.\n' "$PLAN_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+      - name: Destroy the disposable foundation
+        if: inputs.action == 'destroy'
+        run: |
+          set -euo pipefail
+          terraform plan -destroy -input=false -lock-timeout=5m -out=destroy.tfplan
+          terraform apply -input=false -lock-timeout=5m destroy.tfplan
+          printf 'Destroyed disposable infrastructure. Bootstrap, shared Storage account and remote state are retained.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Remove local confidential files
+        if: always()
+        run: rm -f deploy.tfplan destroy.tfplan metadata.json source-run.json ci.auto.tfvars.json

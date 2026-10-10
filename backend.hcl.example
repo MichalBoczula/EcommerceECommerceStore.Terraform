@@ -1,0 +1,4 @@
+storage_account_name = "stecomdevmike2026"
+container_name       = "tfstate"
+key                  = "development.terraform.tfstate"
+# Local init uses Azure CLI. CI supplies ARM_USE_OIDC=true through its environment.

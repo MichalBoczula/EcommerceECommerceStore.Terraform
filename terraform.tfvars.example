@@ -4,8 +4,11 @@ location                = "northeurope"
 sql_location            = "francecentral"
 static_web_app_location = "eastus2"
 
-# Use the existing empty group only after importing it (see README).
+# Must match bootstrap if overridden.
 # resource_group_name = "rg-ecommerce-dev"
+
+# Add operator_object_id from bootstrap output (the human operator, not the CI identity).
+# operator_object_id = "00000000-0000-0000-0000-000000000000"
 
 # Optional: your laptop's public IPv4; omit for no database firewall rules.
 # operator_ipv4 = "203.0.113.10"

@@ -31,10 +31,20 @@ variable "name_suffix" {
 }
 
 variable "resource_group_name" {
-  description = "Optional override. An existing empty group must be imported before apply."
+  description = "Optional override; must match the persistent bootstrap resource group."
   type        = string
   default     = null
   nullable    = true
+}
+
+variable "operator_object_id" {
+  description = "Human operator's Entra object UUID; keep identical locally and in CI. Bootstrap exports this value."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", var.operator_object_id))
+    error_message = "Supply the operator's Entra object UUID from bootstrap output."
+  }
 }
 
 variable "location" {
