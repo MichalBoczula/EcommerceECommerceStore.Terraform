@@ -20,7 +20,8 @@ resource "azapi_resource" "products_database" {
 
   body = {
     sku = {
-      name     = "GP_S_Gen5_2"
+      # Azure returns the base SKU name; vCore count is specified by capacity.
+      name     = "GP_S_Gen5"
       tier     = "GeneralPurpose"
       family   = "Gen5"
       capacity = 2
