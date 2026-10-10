@@ -1,7 +1,8 @@
 resource "azurerm_static_web_app" "main" {
+  # Static Web Apps supports a different set of regions than the ACA foundation.
   name                = "swa-${local.prefix}"
   resource_group_name = azurerm_resource_group.main.name
-  location            = var.location
+  location            = "westeurope"
   sku_tier            = "Free"
   sku_size            = "Free"
   tags                = local.tags

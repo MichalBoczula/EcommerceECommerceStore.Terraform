@@ -17,7 +17,7 @@ This is a fresh implementation. The deprecated Infrastructure repository is not 
 | Key Vault | Standard, RBAC authorization; empty until application configuration |
 | Managed identities | Products, Users, Invoice, Payments, BFF and LiveDocs |
 | Permissions | Business API secret reads; Products writes photos; Invoice writes invoices; LiveDocs reads reports |
-| Frontend hosting | Static Web Apps Free; Angular is not deployed yet |
+| Frontend hosting | Static Web Apps Free in West Europe; Angular is not deployed yet |
 
 The signed-in operator receives Blob Data Contributor and Key Vault Secrets Officer so they can upload demo files and populate secrets later. Use the same Azure identity for the first lifecycle checks.
 
@@ -89,12 +89,12 @@ Use the group name from your configuration if overridden. This root owns and des
 ## Plan and apply
 
 ```powershell
-terraform plan -out=deploy.tfplan
+terraform plan '-out=deploy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Terraform plan failed; no apply attempted' }
 
 # Read the plan. The default configuration declares 28 managed resources.
 # operator_ipv4 adds two firewall rules. The count differs if the group was imported.
-terraform apply deploy.tfplan
+terraform apply 'deploy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Terraform apply failed; keep the state and inspect the Azure error' }
 
 terraform output
@@ -103,6 +103,10 @@ terraform output
 Applying a saved plan executes it immediately; review the plan before the `apply` command. Passwords, connection strings and the Static Web Apps deployment token are not exported as outputs.
 
 The SQL resource checks Azure's returned `useFreeLimit` and `freeLimitExhaustionBehavior`. Azure must confirm `true` and `AutoPause`. There is no automatic paid fallback. The output `databases.sql_free_offer_readback` shows those returned settings.
+
+Static Web Apps uses **West Europe**, independently of the foundation's **North Europe** and SQL's **France Central**. Its supported provisioning regions differ from the other services.
+
+If an apply fails after creating some resources, keep the same directory, state and passwords. Correct the configuration, generate a **new** saved plan and apply that plan. Terraform refreshes the resources already created and plans the remaining work; do not reuse the pre-failure saved plan. For a failure limited to frontend creation, expect a plan that creates the missing Static Web App with no replacements or destroys.
 
 ## Verify no changes
 
@@ -123,11 +127,11 @@ Exit code `0` means the refreshed state matches the configuration. This Azure ch
 Destroy this disposable environment when the development session ends. It deletes databases, demo files, LiveDocs files, identities, frontend hosting and the vault. The vault is purged to allow reuse of its name. A persistent LiveDocs archive must be separated before storing reports you intend to retain.
 
 ```powershell
-terraform plan -destroy -out=destroy.tfplan
+terraform plan -destroy '-out=destroy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Destroy plan failed; no deletion attempted' }
 
 # Read the destroy plan, then execute it.
-terraform apply destroy.tfplan
+terraform apply 'destroy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Destroy failed; keep state and credentials, then inspect the Azure error' }
 
 terraform state list
@@ -135,9 +139,9 @@ if ($LASTEXITCODE -ne 0) { throw 'State inspection failed' }
 # No managed resource addresses should remain. Data source entries can remain.
 
 # In the same directory, with the same settings/passwords:
-terraform plan -out=deploy.tfplan
+terraform plan '-out=deploy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Recreation plan failed' }
-terraform apply deploy.tfplan
+terraform apply 'deploy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Recreation failed; keep the state' }
 ```
 
