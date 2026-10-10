@@ -1,5 +1,13 @@
 mock_provider "azurerm" {}
 
+override_resource {
+  target          = azurerm_resource_group.main
+  override_during = plan
+  values = {
+    id = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-ecommerce-dev"
+  }
+}
+
 override_data {
   target = data.azurerm_client_config.current
   values = {
