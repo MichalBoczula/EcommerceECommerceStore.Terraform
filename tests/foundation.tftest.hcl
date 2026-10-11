@@ -12,18 +12,8 @@ override_data {
 
 variables {
   subscription_id      = "11111111-1111-1111-1111-111111111111"
-  operator_object_id   = "33333333-3333-3333-3333-333333333333"
   sql_admin_password   = "TestOnly-Sql-123456!"
   mongo_admin_password = "TestOnly-Mongo-123456!"
-}
-
-override_data {
-  target = data.azurerm_storage_account.main
-  values = {
-    id                              = "/subscriptions/11111111-1111-1111-1111-111111111111/resourceGroups/rg-ecommerce-dev/providers/Microsoft.Storage/storageAccounts/stecomdevmike2026"
-    allow_nested_items_to_be_public = false
-    account_replication_type        = "LRS"
-  }
 }
 
 run "free_foundation" {
@@ -60,8 +50,9 @@ run "free_foundation" {
 
   assert {
     condition = (
-      !data.azurerm_storage_account.main.allow_nested_items_to_be_public &&
-      data.azurerm_storage_account.main.account_replication_type == "LRS" &&
+      !azurerm_storage_account.main.shared_access_key_enabled &&
+      !azurerm_storage_account.main.allow_nested_items_to_be_public &&
+      azurerm_storage_account.main.account_replication_type == "LRS" &&
       alltrue([for container in azurerm_storage_container.main : container.container_access_type == "private"])
     )
     error_message = "Business files must remain private and use Entra authentication on Standard LRS storage."
@@ -73,8 +64,7 @@ run "free_foundation" {
       length(azurerm_mongo_cluster_firewall_rule.operator) == 0 &&
       azurerm_role_assignment.app_files["livedocs"].role_definition_name == "Storage Blob Data Reader" &&
       !contains(keys(azurerm_role_assignment.app_secrets), "livedocs") &&
-      !contains(keys(azurerm_role_assignment.app_secrets), "bff") &&
-      azurerm_role_assignment.operator_secrets.principal_id == var.operator_object_id
+      !contains(keys(azurerm_role_assignment.app_secrets), "bff")
     )
     error_message = "Default database access must be closed; LiveDocs and BFF must not gain business secret access."
   }
@@ -131,9 +121,9 @@ run "portfolio_names_fit_azure_limits" {
 
   assert {
     condition = (
-      length(data.azurerm_storage_account.main.name) <= 24 &&
+      length(azurerm_storage_account.main.name) <= 24 &&
       length(azurerm_key_vault.main.name) <= 24 &&
-      data.azurerm_resource_group.main.name == "rg-ecommerce-portfolio"
+      azurerm_resource_group.main.name == "rg-ecommerce-portfolio"
     )
     error_message = "Both supported environment names must fit Azure naming limits."
   }
