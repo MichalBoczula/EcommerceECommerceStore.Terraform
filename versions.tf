@@ -13,8 +13,6 @@ terraform {
     }
   }
 
-  # Connection settings are supplied during init; credentials stay in the environment.
-  backend "azurerm" {
-    use_azuread_auth = true
-  }
+  # Step 1 deliberately uses local terraform.tfstate.
+  # Introduce an Azure Blob backend before CI/CD in step 2.
 }
