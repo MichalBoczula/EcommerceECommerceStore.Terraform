@@ -1,6 +1,6 @@
 # ECommerceStore Terraform
 
-Step 1: provision and remove the Azure foundation locally with ordinary Terraform commands.
+Provision and remove the Azure foundation locally with ordinary Terraform commands. Application state is stored in an independent Azure Storage account through your Azure CLI session.
 
 This is a fresh implementation. The deprecated Infrastructure repository is not a dependency.
 
@@ -29,6 +29,7 @@ There are no business Container Apps, verification jobs, scheduled workers, Dock
 
 - Terraform **1.16.x**; development uses **1.16.5**. `.terraform-version` is a version-manager hint, not an installer.
 - Azure CLI on PATH, signed in to the intended subscription.
+- Independent state account `stecomtfstatemb261011` with a private `tfstate` container. Your CLI user needs **Storage Blob Data Contributor** on that account; subscription Owner alone does not grant Blob data access. Create and retain it outside this Terraform root.
 - Permissions to create resources, register the required Azure services, assign roles and purge the disposable Key Vault. Subscription **Owner** is sufficient for this local development setup.
 - SQL Free availability in **France Central**, as admitted for this subscription previously. Deleting a resource group does not reset the subscription's SQL Free region selection.
 - No other DocumentDB Free cluster in this subscription: only one is allowed. Run dev and portfolio one at a time.
@@ -36,6 +37,8 @@ There are no business Container Apps, verification jobs, scheduled workers, Dock
 Terraform registers only the eight Azure resource-provider namespaces this configuration uses. Registration changes subscription metadata; destruction removes the deployed resources, not those registrations.
 
 ## Local setup (PowerShell)
+
+For an existing checkout, follow **State and the next steps** below before initialization. Do not overwrite your existing `terraform.tfvars`, delete state, or reuse a saved plan from before the backend change.
 
 ```powershell
 git clone https://github.com/MichalBoczula/EcommerceECommerceStore.Terraform.git
@@ -149,21 +152,43 @@ terraform apply 'deploy.tfplan'
 if ($LASTEXITCODE -ne 0) { throw 'Recreation failed; keep the state' }
 ```
 
-If Azure returns a transient deletion error, keep the local state and rerun the destroy plan/apply after checking the error. Terraform refreshes what actually remains. Do not delete state files or remove resources from state to hide failed deletion. ACA's platform-managed resource group may take additional time to disappear; Azure owns its lifecycle.
+If Azure returns a transient deletion error, keep the state and rerun the destroy plan/apply after checking the error. Terraform refreshes what actually remains. Do not delete state files or remove resources from state to hide failed deletion. ACA's platform-managed resource group may take additional time to disappear; Azure owns its lifecycle.
 
 ## State and the next steps
 
-Step 1 stores state in **local `terraform.tfstate`**, which survives `terraform destroy`. State and saved plans can contain passwords and tokens; keep them outside Git. `.gitignore` excludes them and personal `.tfvars` files. Commit `.terraform.lock.hcl` so provider versions/checksums stay consistent on Windows and Linux.
+`backend.tf` stores application state in the private Blob `tfstate/development.terraform.tfstate` in `stecomtfstatemb261011`. Here, `key` is the **Blob filename**, not a Storage account access key. Terraform authenticates through your local `az login` session using Microsoft Entra ID; no GitHub identity settings or account keys are required.
 
-Before step 2, move the current state to Azure Blob Storage with `terraform init -migrate-state`. If the backend shares the business Storage account temporarily, first separate that account, its state container, resource group and backend access permissions from this root's destroy lifecycle. **Do not point this root's backend at the account it currently destroys.** Step 4 will migrate the backend to its own account.
+Create the state account manually in `rg-ecommerce-tfstate`. Standard StorageV2, LRS and Hot are suitable; Poland Central is independent of the application's region. Disable anonymous Blob access and Shared Key access, enable default Entra authorization in the portal, and assign your operator Blob Data Contributor. Blob versioning and seven-day Blob/container soft delete provide recovery options. This root does not create, import or destroy the state account, its resource group, container or permissions. Never import them into this application state.
 
-| Step | Scope |
-| --- | --- |
-| 1 | Local Terraform; apply, no-change plan, destroy, recreate |
-| 2 | Remote state and manual infrastructure CI/CD actions: plan, apply, destroy |
-| 3 | Combine saved plan and apply in one workflow; serialize state mutations |
-| 4 | Migrate state to a dedicated persistent Storage account |
-| 5 | Deploy pinned Docker Hub images, connect apps/databases, populate secrets, deploy Angular and smoke-test a business flow |
+Terraform reads and locks remote state during operations and persists changes automatically. Do not download, upload or import state before each plan/apply. Ordinary root destroy updates the remote state while retaining the independent state account. State and saved plans can contain passwords/tokens; keep them outside Git. Commit `.terraform.lock.hcl` to keep providers consistent on Windows and Linux.
+
+### First connection from an existing checkout
+
+Keep the same application directory and passwords. Back up any local application state before changing the backend. Do not migrate `bootstrap/terraform.tfstate`; it belonged to the reverted CI bootstrap, not the application foundation.
+
+- **First deployment or fresh checkout:** use `terraform init` from the setup above.
+- **Existing local application state:** back it up outside Git, then run `terraform init -migrate-state`. Review the source/destination and confirm the one-time copy to the new account.
+- **Already connected to this exact account/container/key:** run ordinary `terraform init`; migration is unnecessary.
+- **Still connected to the old CI backend or the old account was deleted:** stop and recover/inspect the application's authoritative state before switching. If the old backend is accessible, use `terraform init -migrate-state` to transfer its state. Do not use `-reconfigure` to silently start an empty state while application resources still exist.
+
+After cleanup performed outside Terraform, retain the old state: a fresh plan normally refreshes the state and recognizes deleted resources. Inspect that plan before applying. If the old backend is inaccessible, preserve local state/backups and establish what remains in Azure before recovery. Do not discard state to hide a failed deletion.
+
+```powershell
+# Only when migrating valid local application state:
+terraform init -migrate-state
+if ($LASTEXITCODE -ne 0) { throw 'Backend migration failed; retain state and backups' }
+
+terraform state list
+if ($LASTEXITCODE -ne 0) { throw 'State inspection failed' }
+
+# Review a fresh plan after migration; do not apply an old saved plan.
+terraform plan '-out=deploy.tfplan'
+if ($LASTEXITCODE -ne 0) { throw 'Planning failed; no apply attempted' }
+```
+
+For an existing live deployment, backend migration alone should not change Azure resources. A clean recreated environment will instead show the expected creates. Future sessions use the same backend and the ordinary local plan/apply/destroy commands above.
+
+The earlier GitHub CI/CD implementation was reverted. The current scope is local deployment with independent remote state. Infrastructure automation is deferred; deploying application images remains future work.
 
 Terraform will own application image references in step 5. BFF and LiveDocs will have public HTTPS ingress; Products, Users, Invoice and Payments will have internal ingress. Stripe will call the BFF webhook, not a database endpoint.
 

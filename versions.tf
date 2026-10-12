@@ -13,6 +13,5 @@ terraform {
     }
   }
 
-  # Step 1 deliberately uses local terraform.tfstate.
-  # Introduce an Azure Blob backend before CI/CD in step 2.
+  # backend.tf stores application state in independently managed Azure Storage.
 }
