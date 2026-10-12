@@ -110,3 +110,46 @@ variable "operator_ipv4" {
     error_message = "Supply one valid public IPv4, without a CIDR suffix; Azure-wide access is not an operator IP."
   }
 }
+
+variable "products" {
+  description = "Optional Products smoke deployment. Prepare SQL access and the secret, migrate locally, then change stage to run."
+  type = object({
+    stage          = string
+    image          = string
+    source_commit  = string
+    migration_ipv4 = optional(string)
+  })
+  default  = null
+  nullable = true
+
+  validation {
+    condition     = var.products == null ? true : contains(["prepare", "run"], var.products.stage)
+    error_message = "Products stage must be prepare or run. Omit products to retain the foundation only."
+  }
+
+  validation {
+    condition = var.products == null ? true : (
+      can(regex("^mb0101/product-catalog-api@sha256:[0-9a-f]{64}$", var.products.image)) &&
+      can(regex("^[0-9a-f]{40}$", var.products.source_commit))
+    )
+    error_message = "Use the public Products image pinned by its full sha256 digest and the matching 40-character source commit."
+  }
+
+  validation {
+    condition = var.products == null ? true : (
+      var.products.migration_ipv4 == null ? true : (
+        can(regex("^[0-9]{1,3}(\\.[0-9]{1,3}){3}$", var.products.migration_ipv4)) &&
+        can(cidrhost("${var.products.migration_ipv4}/32", 0)) &&
+        !contains(["0.0.0.0", "255.255.255.255", "127.0.0.1"], var.products.migration_ipv4)
+      )
+    )
+    error_message = "Products migration_ipv4 must be one public IPv4, without a CIDR suffix or Azure-wide access."
+  }
+
+  validation {
+    condition = var.products == null ? true : (
+      var.products.stage != "prepare" || var.products.migration_ipv4 != null || var.operator_ipv4 != null
+    )
+    error_message = "The prepare stage needs your public migration_ipv4 (SQL only), or the existing operator_ipv4, for local migrations."
+  }
+}

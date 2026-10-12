@@ -1,0 +1,8 @@
+# Copy to products.auto.tfvars alongside your existing terraform.tfvars.
+# The image/source pair was published by ProductsCatalog CI run 37360409392.
+products = {
+  stage          = "prepare"
+  image          = "mb0101/product-catalog-api@sha256:8ebff9865f56bf4c073417fa1ebdc3d0748b8a9a565f30f3f9afbf4705fa90fc"
+  source_commit  = "5fa6966327dbc7894ce8156cf222b28a0cdf52f5"
+  migration_ipv4 = null # Set your laptop's actual public IPv4 before preparing.
+}

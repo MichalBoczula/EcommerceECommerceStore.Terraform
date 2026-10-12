@@ -6,6 +6,7 @@
 *.tfvars
 *.tfvars.json
 !terraform.tfvars.example
+!products.tfvars.example
 .terraform.tfstate.lock.info
 crash.log
 crash.*.log

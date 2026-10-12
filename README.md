@@ -18,12 +18,13 @@ This is a fresh implementation. The deprecated Infrastructure repository is not 
 | Managed identities | Products, Users, Invoice, Payments, BFF and LiveDocs |
 | Permissions | Business API secret reads; Products writes photos; Invoice writes invoices; LiveDocs reads reports |
 | Frontend hosting | Static Web Apps Free; East US 2 by default; Angular is not deployed yet |
+| Optional Products smoke deployment | Pinned public image, internal ACA ingress, Key Vault SQL secret, and SQL-only access; see [the deployment guide](docs/products-smoke-deployment.md) |
 
 The signed-in operator receives Blob Data Contributor and Key Vault Secrets Officer so they can upload demo files and populate secrets later. Use the same Azure identity for the first lifecycle checks.
 
-Storage and Key Vault use authenticated public HTTPS endpoints. Private Blob containers do not permit anonymous reads. The databases also use public endpoints, but have **no firewall rules by default**. An optional `operator_ipv4` adds exactly one address to each database for local connections. ACA database access is part of step 5, when applications are deployed.
+Storage and Key Vault use authenticated public HTTPS endpoints. Private Blob containers do not permit anonymous reads. The databases also use public endpoints, but have **no firewall rules by default**. An optional `operator_ipv4` adds exactly one address to each database for local connections. Opting into Products prepares separate SQL rules for the ACA platform and, optionally, the migration laptop without opening Mongo access.
 
-There are no business Container Apps, verification jobs, scheduled workers, Docker builds, deployment scripts, GitHub workflows, NAT gateways, private endpoints, dedicated compute profiles or Log Analytics workspaces in this step. Database driver/transaction compatibility is still unverified in Azure.
+The default foundation creates no business Container Apps. The optional Products rollout deploys only Products and includes a local EF migration helper. There are no verification jobs, scheduled workers, Docker builds, GitHub workflows, NAT gateways, private endpoints, dedicated compute profiles or Log Analytics workspaces. Database driver/transaction compatibility still requires live Azure verification.
 
 ## Prerequisites
 
@@ -188,9 +189,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Planning failed; no apply attempted' }
 
 For an existing live deployment, backend migration alone should not change Azure resources. A clean recreated environment will instead show the expected creates. Future sessions use the same backend and the ordinary local plan/apply/destroy commands above.
 
-The earlier GitHub CI/CD implementation was reverted. The current scope is local deployment with independent remote state. Infrastructure automation is deferred; deploying application images remains future work.
+The earlier GitHub infrastructure CI/CD implementation was reverted. Deployment remains local with independent remote state. The first opt-in application rollout is [Products with the existing SQL database](docs/products-smoke-deployment.md); infrastructure automation and the remaining applications are deferred.
 
-Terraform will own application image references in step 5. BFF and LiveDocs will have public HTTPS ingress; Products, Users, Invoice and Payments will have internal ingress. Stripe will call the BFF webhook, not a database endpoint.
+Terraform owns the Products image reference when its rollout is enabled. BFF and LiveDocs will have public HTTPS ingress; Products, Users, Invoice and Payments have or will have internal ingress. Stripe will call the BFF webhook, not a database endpoint.
 
 ## Local configuration tests
 
@@ -201,11 +202,17 @@ terraform test
 if ($LASTEXITCODE -ne 0) { throw 'Terraform tests failed' }
 ```
 
-They check the free cost settings, private storage, scoped application permissions and explicit database firewall addresses. The live lifecycle checks above remain the acceptance criteria for step 1.
+They check the free cost settings, private storage, scoped application permissions, opt-in Products stages and explicit database firewall addresses. The migration helper has separate offline checks:
+
+```powershell
+powershell -NoProfile -File tests/Test-InitializeProductsDatabase.ps1
+```
+
+The live lifecycle and Products smoke checks remain the acceptance criteria; mocks do not prove Azure connectivity.
 
 ## Cost
 
-One custom-VNet external ACA environment creates managed public IP/load-balancer resources billed even with zero application replicas. The estimate is about **EUR 1.85 for 60 deployed hours** or **EUR 22.48 for 730 hours**, before VAT and traffic. Storage and Key Vault operations add small usage charges. The free database/frontend configurations are fixed in the resource definitions; changing a tier requires a reviewed code change. No application compute is deployed in step 1.
+One custom-VNet external ACA environment creates managed public IP/load-balancer resources billed even with zero application replicas. The estimate is about **EUR 1.85 for 60 deployed hours** or **EUR 22.48 for 730 hours**, before VAT and traffic. Storage and Key Vault operations add small usage charges. The free database/frontend configurations are fixed in the resource definitions; changing a tier requires a reviewed code change. The default foundation has no application compute. The optional Products smoke stage keeps one 0.25-vCPU / 0.5-GiB replica running; Consumption compute and SQL usage remain subject to their free allowances and billing limits.
 
 ## References
 

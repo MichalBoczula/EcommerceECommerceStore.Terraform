@@ -14,10 +14,25 @@ variables {
   subscription_id      = "11111111-1111-1111-1111-111111111111"
   sql_admin_password   = "TestOnly-Sql-123456!"
   mongo_admin_password = "TestOnly-Mongo-123456!"
+  environment          = "dev"
+  name_suffix          = "mike2026"
+  resource_group_name  = null
+  operator_ipv4        = null
+  products             = null
 }
 
 run "free_foundation" {
   command = plan
+
+  assert {
+    condition = (
+      length(azurerm_container_app.products) == 0 &&
+      length(azurerm_key_vault_secret.products_sql) == 0 &&
+      length(azurerm_mssql_firewall_rule.products_aca) == 0 &&
+      length(azurerm_mssql_firewall_rule.products_migration) == 0
+    )
+    error_message = "Products rollout must be opt-in; the default foundation must not deploy an app or open SQL access."
+  }
 
   assert {
     condition = contains(

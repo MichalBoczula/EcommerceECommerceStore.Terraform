@@ -56,3 +56,19 @@ output "frontend_url" {
   description = "Empty SWA hosting resource until the Angular deployment in step 5."
   value       = "https://${azurerm_static_web_app.main.default_host_name}"
 }
+
+output "products_deployment" {
+  description = "Products stage, pinned release and verification details; contains no credentials. The URL is internal to ACA."
+  value = var.products == null ? null : {
+    stage                    = var.products.stage
+    subscription_id          = var.subscription_id
+    resource_group_name      = azurerm_resource_group.main.name
+    container_app_name       = "ca-${local.prefix}-products"
+    image                    = var.products.image
+    source_commit            = var.products.source_commit
+    sql_connection_secret_id = azurerm_key_vault_secret.products_sql[0].id
+    sql_allowed_platform_ips = sort(tolist(local.products_sql_ips))
+    migration_ipv4           = local.products_migration_ipv4
+    url                      = try("https://${azurerm_container_app.products[0].ingress[0].fqdn}", null)
+  }
+}
