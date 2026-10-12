@@ -1,7 +1,7 @@
 # Products and SQL: first application smoke deployment
 
 Deploy only the existing ProductsCatalog API to the already-applied foundation.
-Terraform runs locally and continues using `stecomtfstatemb261011/tfstate/development.terraform.tfstate`.
+Terraform runs locally and continues using the foundation's existing Blob backend.
 Keep the same foundation inputs, SQL/Mongo passwords and operator identity.
 
 The first release is pinned to:
